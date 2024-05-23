@@ -5,7 +5,7 @@ def main() -> None:
     uvicorn.run(
         "app:app",
         host="127.0.0.1",
-        port=4598,
+        port=5555,
     )
 
 

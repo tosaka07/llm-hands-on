@@ -1,10 +1,21 @@
 from fastapi import FastAPI
 from langchain_community.llms.ollama import Ollama
 from pydantic import BaseModel
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 app = FastAPI()
+
+PROMPT = """
+You are an AI assistant for proofreading business emails.
+Based on the context, please proofread and edit the following reply to the given email body:
+Body:
+{message}
+Reply:
+{reply}
+Constraints:
+- Only proofread and edit the reply
+"""
 
 
 @app.get("/")
@@ -14,23 +25,17 @@ def read_root():
 
 class FormatEmailRequest(BaseModel):
     message: str
+    reply: str
 
 
 class FormatEmailResponse(BaseModel):
-    message: str
+    corrected_reply: str
 
 
 @app.post("/format_email")
 def format_mail(request: FormatEmailRequest) -> FormatEmailResponse:
-    # システムプロンプト
-    system_template = (
-        "Please revise the following sentences into correct business e-mail text:"
-    )
-
-    # システムプロンプト
-    prompt_template = ChatPromptTemplate.from_messages(
-        [("system", system_template), ("user", "{text}")]
-    )
+    # プロンプトテンプレート
+    prompt_template = PromptTemplate.from_template(PROMPT)
 
     # LLM
     llm = Ollama(model="phi3")
@@ -42,7 +47,7 @@ def format_mail(request: FormatEmailRequest) -> FormatEmailResponse:
     chain = prompt_template | llm | parser
 
     # チェーンの実行
-    res = chain.invoke({"text": request.message})
+    res = chain.invoke({"message": request.message, "reply": request.reply})
 
     # レスポンスの返却
-    return FormatEmailResponse(message=res)
+    return FormatEmailResponse(corrected_reply=res)
